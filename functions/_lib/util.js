@@ -22,6 +22,20 @@ export function orgLabel(row) {
   return row.org || row.company || "Unknown organization";
 }
 
+// Country display fallback. The source CSV uses "NA" (imported as NULL) on a
+// lot of rows, but `locn` usually ends with the country, so we can recover it
+// for display.  Not used for filtering — the dropdown shows only countries
+// actually stored in the table.
+export function displayCountry(row) {
+  const c = row?.country;
+  if (c && c !== "NA") return c;
+  const parts = (row?.locn || "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+  return parts[parts.length - 1] || "";
+}
+
 // "Smith, J. P." style display name when name is missing.
 export function personLabel(row) {
   if (!row) return "Unknown person";

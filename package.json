@@ -17,6 +17,7 @@
     "load:remote": "node scripts/apply.mjs --remote"
   },
   "devDependencies": {
-    "wrangler": "^3.80.0"
+    "better-sqlite3": "^12.10.0",
+    "wrangler": "^4.92.0"
   }
 }

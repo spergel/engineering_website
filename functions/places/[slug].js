@@ -1,5 +1,5 @@
 import { page, html, raw, esc } from "../_lib/html.js";
-import { UNKNOWN_LC_ID, personLabel, orgLabel, osmUrl } from "../_lib/util.js";
+import { UNKNOWN_LC_ID, personLabel, orgLabel, osmUrl, displayCountry } from "../_lib/util.js";
 
 export async function onRequestGet({ params, env }) {
   const place = await env.DB
@@ -37,7 +37,7 @@ export async function onRequestGet({ params, env }) {
     <p><a href="/places">&larr; All places</a></p>
     <h1>${place.locn}</h1>
     <p class="muted">
-      ${place.country || ""}
+      ${displayCountry(place)}
       ${raw(place.lat != null && place.lon != null ? ` · ${esc(place.lat)}, ${esc(place.lon)}` : "")}
       ${raw(map ? ` · <a href="${esc(map)}" target="_blank" rel="noopener">View on OpenStreetMap</a>` : "")}
     </p>

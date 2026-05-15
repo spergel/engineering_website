@@ -1,18 +1,26 @@
 import { page, html, esc, raw } from "./_lib/html.js";
-import { getPage, paginationHtml, UNKNOWN_LC_ID } from "./_lib/util.js";
+import { getPage, paginationHtml, UNKNOWN_LC_ID, displayCountry } from "./_lib/util.js";
+
+const SORTS = {
+  name:          { sql: "p.country, p.locn",                          label: "Name (A–Z)" },
+  connections:   { sql: "conn_count DESC, p.locn",                    label: "Most connections" },
+  connections_asc: { sql: "conn_count ASC, p.locn",                   label: "Fewest connections" },
+};
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const country = (url.searchParams.get("country") || "").trim();
   const q = (url.searchParams.get("q") || "").trim();
+  const sortKey = SORTS[url.searchParams.get("sort")] ? url.searchParams.get("sort") : "name";
   const { page: pageNum, limit, offset } = getPage(url);
 
   // Filter out the "unknown location" sentinel from listings.
   const where = [`p.lc_id != ${UNKNOWN_LC_ID}`, "p.locn IS NOT NULL"];
   const params = [];
   if (country) {
-    where.push(`p.country = ?${params.length + 1}`);
-    params.push(country);
+    // Case-insensitive match — the source CSV mixes 'canada' and 'Canada'.
+    where.push(`LOWER(p.country) = ?${params.length + 1}`);
+    params.push(country.toLowerCase());
   }
   if (q) {
     where.push(`LOWER(p.locn) LIKE ?${params.length + 1}`);
@@ -24,25 +32,34 @@ export async function onRequestGet({ request, env }) {
            (SELECT COUNT(*) FROM connections c WHERE c.lc_id = p.lc_id) AS conn_count
     FROM places p
     WHERE ${where.join(" AND ")}
-    ORDER BY p.country, p.locn
+    ORDER BY ${SORTS[sortKey].sql}
     LIMIT ${limit + 1} OFFSET ${offset}
   `;
   const rows = (await env.DB.prepare(listSql).bind(...params).all()).results || [];
   const hasNext = rows.length > limit;
   const display = hasNext ? rows.slice(0, limit) : rows;
 
-  const countries = (await env.DB.prepare(
-    `SELECT DISTINCT country FROM places WHERE country IS NOT NULL AND lc_id != ${UNKNOWN_LC_ID} ORDER BY country`
-  ).all()).results || [];
+  // Dropdown: deduped, lowercased.
+  const countries = (await env.DB.prepare(`
+    SELECT LOWER(country) AS country, COUNT(*) AS n
+    FROM places
+    WHERE country IS NOT NULL AND country != 'NA' AND lc_id != ${UNKNOWN_LC_ID}
+    GROUP BY LOWER(country)
+    ORDER BY country
+  `).all()).results || [];
 
   const countryOptions = countries
-    .map(c => `<option value="${esc(c.country)}"${c.country === country ? " selected" : ""}>${esc(c.country)}</option>`)
+    .map(c => `<option value="${esc(c.country)}"${c.country === country.toLowerCase() ? " selected" : ""}>${esc(c.country)} (${c.n})</option>`)
+    .join("");
+
+  const sortOptions = Object.entries(SORTS)
+    .map(([k, v]) => `<option value="${esc(k)}"${k === sortKey ? " selected" : ""}>${esc(v.label)}</option>`)
     .join("");
 
   const tableRows = display.map(r => html`
     <tr>
       <td><a href="/places/${raw(esc(r.slug))}">${r.locn}</a></td>
-      <td class="muted">${r.country || ""}</td>
+      <td class="muted">${displayCountry(r)}</td>
       <td>${r.conn_count}</td>
     </tr>
   `).join("");
@@ -55,14 +72,15 @@ export async function onRequestGet({ request, env }) {
         <option value="">All countries</option>
         ${raw(countryOptions)}
       </select>
+      <select name="sort">${raw(sortOptions)}</select>
       <button type="submit">Filter</button>
-      ${raw(q || country ? `<a href="/places">Clear</a>` : "")}
+      ${raw(q || country || sortKey !== "name" ? `<a href="/places">Clear</a>` : "")}
     </form>
     <table>
       <thead><tr><th>Location</th><th>Country</th><th># connections</th></tr></thead>
       <tbody>${raw(tableRows)}</tbody>
     </table>
-    ${raw(paginationHtml(pageNum, hasNext, "/places", { q, country }))}
+    ${raw(paginationHtml(pageNum, hasNext, "/places", { q, country, sort: sortKey === "name" ? "" : sortKey }))}
     ${raw(display.length === 0 ? '<p class="muted">No matches.</p>' : "")}
   `;
   return page({ title: "Places", body });

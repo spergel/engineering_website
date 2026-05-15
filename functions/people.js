@@ -1,10 +1,17 @@
 import { page, html, esc, raw } from "./_lib/html.js";
 import { getPage, paginationHtml, personLabel } from "./_lib/util.js";
 
+const SORTS = {
+  name:            { sql: "p.lastname, p.firstname, p.in_id", label: "Name (A–Z)" },
+  connections:     { sql: "conn_count DESC, p.lastname",      label: "Most connections" },
+  connections_asc: { sql: "conn_count ASC, p.lastname",       label: "Fewest connections" },
+};
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   const q = (url.searchParams.get("q") || "").trim();
   const source = (url.searchParams.get("source") || "").trim();
+  const sortKey = SORTS[url.searchParams.get("sort")] ? url.searchParams.get("sort") : "name";
   const { page: pageNum, limit, offset } = getPage(url);
 
   // Build WHERE clause. Forgiving substring match on both name and simpname.
@@ -24,11 +31,11 @@ export async function onRequestGet({ request, env }) {
   const whereSql = where.length ? "WHERE " + where.join(" AND ") : "";
 
   const listSql = `
-    SELECT p.in_id, p.slug, p.name, p.simpname,
+    SELECT p.in_id, p.slug, p.name, p.simpname, p.lastname,
            (SELECT COUNT(*) FROM connections c WHERE c.in_id = p.in_id) AS conn_count
     FROM people p
     ${whereSql}
-    ORDER BY p.lastname, p.firstname, p.in_id
+    ORDER BY ${SORTS[sortKey].sql}
     LIMIT ${limit + 1} OFFSET ${offset}
   `;
   const rows = (await env.DB.prepare(listSql).bind(...params).all()).results || [];
@@ -42,6 +49,10 @@ export async function onRequestGet({ request, env }) {
 
   const sourceOptions = sources
     .map(s => `<option value="${esc(s.source)}"${s.source === source ? " selected" : ""}>${esc(s.source)}</option>`)
+    .join("");
+
+  const sortOptions = Object.entries(SORTS)
+    .map(([k, v]) => `<option value="${esc(k)}"${k === sortKey ? " selected" : ""}>${esc(v.label)}</option>`)
     .join("");
 
   const tableRows = display.map(r => html`
@@ -60,14 +71,15 @@ export async function onRequestGet({ request, env }) {
         <option value="">All sources</option>
         ${raw(sourceOptions)}
       </select>
+      <select name="sort">${raw(sortOptions)}</select>
       <button type="submit">Filter</button>
-      ${raw(q || source ? `<a href="/people">Clear</a>` : "")}
+      ${raw(q || source || sortKey !== "name" ? `<a href="/people">Clear</a>` : "")}
     </form>
     <table>
       <thead><tr><th>Name</th><th>Simp. name</th><th># connections</th></tr></thead>
       <tbody>${raw(tableRows)}</tbody>
     </table>
-    ${raw(paginationHtml(pageNum, hasNext, "/people", { q, source }))}
+    ${raw(paginationHtml(pageNum, hasNext, "/people", { q, source, sort: sortKey === "name" ? "" : sortKey }))}
     ${raw(display.length === 0 ? '<p class="muted">No matches.</p>' : "")}
   `;
   return page({ title: "People", body });
