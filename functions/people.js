@@ -46,7 +46,7 @@ export async function onRequestGet({ request, env }) {
 
   const tableRows = display.map(r => html`
     <tr>
-      <td>${personLabel(r)}</td>
+      <td><a href="/people/${raw(esc(r.slug))}">${personLabel(r)}</a></td>
       <td class="muted">${r.simpname || ""}</td>
       <td>${r.conn_count}</td>
     </tr>

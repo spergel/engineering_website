@@ -41,7 +41,7 @@ export async function onRequestGet({ request, env }) {
 
   const tableRows = display.map(r => html`
     <tr>
-      <td>${r.locn}</td>
+      <td><a href="/places/${raw(esc(r.slug))}">${r.locn}</a></td>
       <td class="muted">${r.country || ""}</td>
       <td>${r.conn_count}</td>
     </tr>

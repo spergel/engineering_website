@@ -1,4 +1,4 @@
-import { page, html, raw } from "./_lib/html.js";
+import { page, html, raw, esc } from "./_lib/html.js";
 import { getPage, paginationHtml, orgLabel } from "./_lib/util.js";
 
 export async function onRequestGet({ request, env }) {
@@ -28,7 +28,7 @@ export async function onRequestGet({ request, env }) {
 
   const tableRows = display.map(r => html`
     <tr>
-      <td>${orgLabel(r)}</td>
+      <td><a href="/organizations/${raw(esc(r.slug))}">${orgLabel(r)}</a></td>
       <td class="muted">${r.company && r.company !== r.org ? r.company : ""}</td>
       <td>${r.conn_count}</td>
     </tr>
