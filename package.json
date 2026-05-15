@@ -7,7 +7,7 @@
     "setup": "node scripts/setup.mjs",
     "setup:local": "node scripts/setup.mjs --local-only",
     "dev": "wrangler pages dev public --persist-to=.wrangler/state",
-    "deploy": "wrangler pages deploy public --project-name=engineers",
+    "deploy": "wrangler pages deploy public",
     "d1:migrate:local": "wrangler d1 migrations apply engineers-db --local --persist-to=.wrangler/state",
     "d1:migrate:remote": "wrangler d1 migrations apply engineers-db --remote",
     "d1:seed:local": "wrangler d1 execute engineers-db --local --file=./seed.sql --persist-to=.wrangler/state",
