@@ -1,0 +1,22 @@
+{
+  "name": "engineering-website",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototype site for a historical engineers dataset on Cloudflare Pages + D1",
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "setup:local": "node scripts/setup.mjs --local-only",
+    "dev": "wrangler pages dev public --persist-to=.wrangler/state",
+    "deploy": "wrangler pages deploy public --project-name=engineers",
+    "d1:migrate:local": "wrangler d1 migrations apply engineers-db --local --persist-to=.wrangler/state",
+    "d1:migrate:remote": "wrangler d1 migrations apply engineers-db --remote",
+    "d1:seed:local": "wrangler d1 execute engineers-db --local --file=./seed.sql --persist-to=.wrangler/state",
+    "d1:seed:remote": "wrangler d1 execute engineers-db --remote --file=./seed.sql",
+    "import": "node scripts/import.mjs",
+    "load:local": "node scripts/apply.mjs --local",
+    "load:remote": "node scripts/apply.mjs --remote"
+  },
+  "devDependencies": {
+    "wrangler": "^3.80.0"
+  }
+}

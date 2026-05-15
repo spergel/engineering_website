@@ -1,0 +1,12 @@
+name = "engineers"
+account_id = "807727b2ac6a838dd7b8f7893701b888"
+compatibility_date = "2024-11-01"
+pages_build_output_dir = "public"
+
+# `npm run setup` rewrites the database_id below after creating the D1 db.
+# Pages Functions read the DB via the `DB` binding (env.DB).
+[[d1_databases]]
+binding = "DB"
+database_name = "engineers-db"
+database_id = "d83d9b4e-0189-4274-bbdb-9037318d0438"
+migrations_dir = "migrations"

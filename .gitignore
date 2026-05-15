@@ -1,0 +1,19 @@
+node_modules/
+.wrangler/
+.dev.vars
+.DS_Store
+*.log
+
+# Generated bulk-import SQL chunks
+/data/
+
+# Large connection CSVs — too big for GitHub (one is 702 MB, GitHub blocks
+# >100 MB). The three small dimension CSVs (indidx / locidx / orgidx) are
+# committed. The big three live in public/csv/ locally and are read by
+# scripts/import.mjs from there.
+/public/csv/combo5_3b.csv
+/public/csv/crp3_1b.csv
+/public/csv/emjdbase1_4b.csv
+
+# Local sample artefacts produced during seed generation
+_sample_selection.json
