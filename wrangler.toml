@@ -1,7 +1,12 @@
 name = "engineers"
-account_id = "807727b2ac6a838dd7b8f7893701b888"
 compatibility_date = "2024-11-01"
 pages_build_output_dir = "public"
+# Note: account_id is intentionally NOT set here.
+# - Local: wrangler picks it up from `npx wrangler login` (OAuth) or the
+#   CLOUDFLARE_ACCOUNT_ID env var.
+# - Cloudflare Pages build: it's injected by the build runner.
+# Setting account_id explicitly here makes wrangler v4 reject the config
+# for Pages projects.
 
 # `npm run setup` rewrites the database_id below after creating the D1 db.
 # Pages Functions read the DB via the `DB` binding (env.DB).
