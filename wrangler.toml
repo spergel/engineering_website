@@ -14,7 +14,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "engineers-db"
-database_id = "d83d9b4e-0189-4274-bbdb-9037318d0438"
+database_id = "a28d2d35-79d5-4bf1-a207-b91bf165383c"
 migrations_dir = "migrations"
 
 # account_id is intentionally NOT set:
