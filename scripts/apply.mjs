@@ -3,6 +3,9 @@
 //
 //   node scripts/apply.mjs --local
 //   node scripts/apply.mjs --remote
+//
+// We pipe "y\n" into wrangler so it auto-accepts the "Ok to proceed?"
+// prompt on --remote. We retry once on transient D1_RESET_DO errors.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -14,7 +17,7 @@ const DATA_DIR = path.join(ROOT, "data");
 const DB_NAME = "engineers-db";
 const flags = new Set(process.argv.slice(2));
 const REMOTE = flags.has("--remote");
-const LOCAL = flags.has("--local") || !REMOTE; // default to local
+const LOCAL = flags.has("--local") || !REMOTE;
 
 if (!fs.existsSync(DATA_DIR)) {
   console.error(`No ${DATA_DIR} — run \`npm run import\` first.`);
@@ -30,16 +33,37 @@ const target = REMOTE ? "--remote" : "--local";
 const persist = LOCAL ? ["--persist-to=.wrangler/state"] : [];
 const t0 = Date.now();
 
+function runOne(file) {
+  const args = ["wrangler", "d1", "execute", DB_NAME, target, ...persist, `--file=${file}`];
+  // capture stdout/stderr but feed "y\n" on stdin to auto-confirm the
+  // remote-execution warning prompt
+  const r = spawnSync("npx", args, {
+    cwd: ROOT,
+    input: "y\n",
+    stdio: ["pipe", "pipe", "pipe"],
+    shell: process.platform === "win32",
+    encoding: "utf8",
+  });
+  if (r.stdout) process.stdout.write(r.stdout);
+  if (r.stderr) process.stderr.write(r.stderr);
+  return r;
+}
+
 for (let i = 0; i < files.length; i++) {
   const f = files[i];
   const p = path.join(DATA_DIR, f);
   const size = (fs.statSync(p).size / 1024).toFixed(0);
   console.log(`[${i + 1}/${files.length}] ${f} (${size} KB)`);
-  const r = spawnSync(
-    "npx",
-    ["wrangler", "d1", "execute", DB_NAME, target, ...persist, `--file=${p}`],
-    { cwd: ROOT, stdio: "inherit", shell: process.platform === "win32" }
-  );
+
+  let r = runOne(p);
+
+  // Retry once on D1_RESET_DO (transient — the underlying DO restarted).
+  if (r.status !== 0 && /D1_RESET_DO/.test(r.stderr || r.stdout || "")) {
+    console.log("  → D1_RESET_DO; retrying after 2s…");
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 2000);
+    r = runOne(p);
+  }
+
   if (r.status !== 0) {
     console.error(`Failed on ${f} (exit ${r.status}). Re-run after fixing.`);
     process.exit(r.status || 1);

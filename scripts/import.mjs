@@ -30,8 +30,10 @@ const CSV_DIR = args["csv-dir"] || "./public/csv";
 const OUT_DIR = args.out || "./data";
 
 const UNKNOWN_LC_ID = 52793;
-const ROWS_PER_INSERT = 500;          // safe under any reasonable param/stmt cap
-const MAX_FILE_BYTES = 3 * 1024 * 1024; // ~3MB per file
+// Tuned for remote D1: larger chunks/statements trigger D1_RESET_DO
+// (the underlying Durable Object resets if a single import is too heavy).
+const ROWS_PER_INSERT = 200;
+const MAX_FILE_BYTES  = 1 * 1024 * 1024; // ~1MB per file
 
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
@@ -103,65 +105,61 @@ function sqlReal(v) {
 }
 
 // --- Chunked writer --------------------------------------------------------
-// Writes multi-row INSERT statements, opening a new file when the current one
-// grows past MAX_FILE_BYTES.
+// Writes multi-row INSERT statements, opening a new file when the current
+// one grows past MAX_FILE_BYTES. The INSERT header is written lazily on
+// the first row of each batch — that way, if a section ends right after
+// closing a statement, the file doesn't trail off with a dangling
+// "INSERT INTO ... VALUES\n" and trip wrangler with "SQL code did not
+// contain a statement."
 class ChunkWriter {
   constructor(prefix, columns) {
-    this.prefix = prefix; // e.g. "02_people"
+    this.prefix = prefix;                              // "02_people"
     this.columns = columns;
     this.table = prefix.split("_").slice(1).join("_"); // "people"
+    this.head = `INSERT INTO ${this.table} (${this.columns.join(", ")}) VALUES\n`;
     this.fileIdx = 0;
     this.fd = null;
     this.bytes = 0;
-    this.rowsInInsert = 0;
-    this.firstRowInInsert = true;
+    this.rowsInInsert = 0;       // rows in the current open statement (0 = none/closed)
   }
-  _open() {
+  _openFile() {
     this.fileIdx += 1;
     const name = `${this.prefix}_${String(this.fileIdx).padStart(3, "0")}.sql`;
-    const p = path.join(OUT_DIR, name);
-    this.fd = fs.openSync(p, "w");
+    this.fd = fs.openSync(path.join(OUT_DIR, name), "w");
     this.bytes = 0;
     console.log(`  → ${name}`);
   }
-  _startInsert() {
-    const head = `INSERT INTO ${this.table} (${this.columns.join(", ")}) VALUES\n`;
-    this._write(head);
-    this.rowsInInsert = 0;
-    this.firstRowInInsert = true;
-  }
   _write(s) {
-    if (!this.fd) this._open();
     const buf = Buffer.from(s, "utf8");
     fs.writeSync(this.fd, buf);
     this.bytes += buf.length;
   }
   add(valuesTuple) {
-    if (!this.fd) { this._open(); this._startInsert(); }
-    const sep = this.firstRowInInsert ? "" : ",\n";
+    if (!this.fd) this._openFile();
+    if (this.rowsInInsert === 0) {
+      // Starting a new statement — write the header now (lazy).
+      this._write(this.head);
+    }
+    const sep = this.rowsInInsert === 0 ? "" : ",\n";
     this._write(`${sep}(${valuesTuple})`);
-    this.firstRowInInsert = false;
     this.rowsInInsert += 1;
     if (this.rowsInInsert >= ROWS_PER_INSERT) {
       this._write(";\n");
-      // Rotate file if it's getting large; otherwise start a new INSERT in the
-      // same file.
-      if (this.bytes >= MAX_FILE_BYTES) {
-        this._close();
-      } else {
-        this._startInsert();
-      }
+      this.rowsInInsert = 0;
+      if (this.bytes >= MAX_FILE_BYTES) this._closeFile();
     }
   }
-  _close() {
+  _closeFile() {
     if (!this.fd) return;
-    if (this.rowsInInsert > 0 && !this.firstRowInInsert) this._write(";\n");
+    if (this.rowsInInsert > 0) {
+      // Mid-statement at file close — terminate it.
+      this._write(";\n");
+      this.rowsInInsert = 0;
+    }
     fs.closeSync(this.fd);
     this.fd = null;
-    this.rowsInInsert = 0;
-    this.firstRowInInsert = true;
   }
-  flush() { this._close(); }
+  flush() { this._closeFile(); }
 }
 
 // --- 01: wipe --------------------------------------------------------------
