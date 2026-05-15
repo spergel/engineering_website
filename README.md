@@ -1,11 +1,11 @@
 # Historical Engineers — prototype
 
-A small Cloudflare Pages + D1 prototype for browsing a dataset of historical
-engineers, the organizations they worked for, and the places they were
-associated with. Built as the minimum needed to validate the data shape — not
-the final product.
+A small Cloudflare Workers + D1 prototype for browsing a dataset of
+historical engineers, the organizations they worked for, and the places
+they were associated with. Built as the minimum needed to validate the
+data shape — not the final product.
 
-Stack: Cloudflare Pages (static + Pages Functions), Cloudflare D1 (SQLite),
+Stack: Cloudflare Workers with Static Assets, Cloudflare D1 (SQLite),
 server-rendered HTML, no build step.
 
 ## Layout
@@ -13,19 +13,21 @@ server-rendered HTML, no build step.
 ```
 migrations/0001_init.sql      D1 schema
 seed.sql                      Sample data (~48 people, 19 places, 23 orgs, ~109 connections)
-wrangler.toml                 Cloudflare project config (account_id + D1 binding)
-public/                       Static assets served by Pages
+wrangler.toml                 Worker config: main, [assets], [[d1_databases]]
+public/                       Static assets served via the ASSETS binding
   style.css
-  csv/                        Source CSVs (large ones are gitignored — see below)
-functions/                    Pages Functions (one file per route)
-  index.js                    GET /
-  people.js                   GET /people
-  people/[slug].js            GET /people/:slug
-  places.js                   GET /places
-  places/[slug].js            GET /places/:slug
-  organizations.js            GET /organizations
-  organizations/[slug].js     GET /organizations/:slug
-  _lib/                       Shared helpers (HTML rendering, pagination, labels)
+  csv/                        Source CSVs (large ones gitignored + .assetsignored)
+  .assetsignore               Keeps the >25 MiB CSVs out of the Worker bundle
+src/
+  index.js                    Worker entry — routes GETs to the modules below
+  lib/                        Shared helpers (HTML rendering, pagination, labels)
+  routes/home.js              GET /
+  routes/people.js            GET /people
+  routes/person.js            GET /people/:slug
+  routes/places.js            GET /places
+  routes/place.js             GET /places/:slug
+  routes/organizations.js     GET /organizations
+  routes/organization.js      GET /organizations/:slug
 scripts/
   setup.mjs                   One-shot: creates D1, writes binding, migrates + seeds
   import.mjs                  Generates bulk-import SQL chunks from the full CSVs
@@ -54,12 +56,12 @@ npm install
 npx wrangler login        # one time — opens a browser
 npm run setup             # creates D1, writes the binding into wrangler.toml,
                           # then applies migrations + seed on both local and remote
-npm run deploy            # ships to Cloudflare Pages
+npm run deploy            # `wrangler deploy` — uploads the Worker + assets
 ```
 
-That's it. The `setup` script is idempotent — re-running is safe. The first
-deploy creates a Pages project named `engineers`; rename it via the `deploy`
-script in `package.json`.
+That's it. The `setup` script is idempotent — re-running is safe. The
+first deploy creates a Worker named `engineerlist` (from `wrangler.toml`'s
+`name`).  Rename by changing that field.
 
 ### Local dev only
 

@@ -1,5 +1,5 @@
-import { page, html, raw, esc } from "./_lib/html.js";
-import { getPage, paginationHtml, orgLabel } from "./_lib/util.js";
+import { page, html, raw, esc } from "../lib/html.js";
+import { getPage, paginationHtml, orgLabel } from "../lib/util.js";
 
 const SORTS = {
   name:            { sql: "COALESCE(o.org, o.company), o.og_id", label: "Name (A–Z)" },

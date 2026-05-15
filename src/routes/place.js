@@ -1,5 +1,5 @@
-import { page, html, raw, esc } from "../_lib/html.js";
-import { UNKNOWN_LC_ID, personLabel, orgLabel, osmUrl, displayCountry } from "../_lib/util.js";
+import { page, html, raw, esc } from "../lib/html.js";
+import { UNKNOWN_LC_ID, personLabel, orgLabel, osmUrl, displayCountry } from "../lib/util.js";
 
 export async function onRequestGet({ params, env }) {
   const place = await env.DB

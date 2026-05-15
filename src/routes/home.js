@@ -1,4 +1,4 @@
-import { page, html } from "./_lib/html.js";
+import { page, html } from "../lib/html.js";
 
 export async function onRequestGet({ env }) {
   const counts = await env.DB.prepare(`

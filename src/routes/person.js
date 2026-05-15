@@ -1,5 +1,5 @@
-import { page, html, raw, esc } from "../_lib/html.js";
-import { UNKNOWN_LC_ID, placeLabel, orgLabel, personLabel, osmUrl } from "../_lib/util.js";
+import { page, html, raw, esc } from "../lib/html.js";
+import { UNKNOWN_LC_ID, placeLabel, orgLabel, personLabel, osmUrl } from "../lib/util.js";
 
 export async function onRequestGet({ request, params, env }) {
   const slug = params.slug;

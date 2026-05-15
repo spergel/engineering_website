@@ -1,5 +1,5 @@
-import { page, html, esc, raw } from "./_lib/html.js";
-import { getPage, paginationHtml, UNKNOWN_LC_ID, displayCountry } from "./_lib/util.js";
+import { page, html, esc, raw } from "../lib/html.js";
+import { getPage, paginationHtml, UNKNOWN_LC_ID, displayCountry } from "../lib/util.js";
 
 const SORTS = {
   name:          { sql: "p.country, p.locn",                          label: "Name (A–Z)" },

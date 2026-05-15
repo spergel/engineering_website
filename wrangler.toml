@@ -1,17 +1,23 @@
-name = 'engineerlist'
+name = "engineerlist"
+main = "src/index.js"
 compatibility_date = "2024-11-01"
-pages_build_output_dir = "public"
-# Note: account_id is intentionally NOT set here.
-# - Local: wrangler picks it up from `npx wrangler login` (OAuth) or the
-#   CLOUDFLARE_ACCOUNT_ID env var.
-# - Cloudflare Pages build: it's injected by the build runner.
-# Setting account_id explicitly here makes wrangler v4 reject the config
-# for Pages projects.
+
+# Static files in public/ are served by the Worker via the ASSETS binding.
+# The Worker calls `env.ASSETS.fetch(request)` for anything its router
+# doesn't handle (style.css, /csv/*.csv, /favicon.ico, …).
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
 # `npm run setup` rewrites the database_id below after creating the D1 db.
-# Pages Functions read the DB via the `DB` binding (env.DB).
+# Routes read the DB via the `DB` binding (env.DB).
 [[d1_databases]]
 binding = "DB"
 database_name = "engineers-db"
 database_id = "d83d9b4e-0189-4274-bbdb-9037318d0438"
 migrations_dir = "migrations"
+
+# account_id is intentionally NOT set:
+# - Local: wrangler reads it from your OAuth login or the
+#   CLOUDFLARE_ACCOUNT_ID env var.
+# - CI/Cloudflare build: injected automatically.
