@@ -65,7 +65,7 @@ export async function onRequestGet({ request, env }) {
   `).join("");
 
   const body = html`
-    <h1>Places</h1>
+    <h1>Places <small class="muted">· <a href="/map">View on map</a></small></h1>
     <form class="filter-bar" method="get" action="/places">
       <input type="search" name="q" value="${q}" placeholder="Search location">
       <select name="country">

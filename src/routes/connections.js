@@ -1,8 +1,8 @@
 import { page } from "../lib/html.js";
 
 // Force-directed network graph of organizations, built as a "comparison
-// playground": the visualization options (view, color, motion, click
-// behaviour) are exposed as live toggles so we can A/B them with real users.
+// playground": the visualization options (view, color, click behaviour)
+// are exposed as live toggles so we can A/B them with real users.
 //
 // graphology + graphology-library (forceAtlas2 + Louvain) + sigma are loaded
 // as UMD builds from jsDelivr, so there is no build step.
@@ -97,10 +97,6 @@ export async function onRequestGet() {
       table.net-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
       table.net-table .chip { display: inline-flex; align-items: center; gap: 0.4rem; }
       table.net-table .chip i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-
-      @media (prefers-reduced-motion: reduce) {
-        .seg-btns button { transition: none; }
-      }
     </style>
 
     <div class="net-header">
@@ -128,13 +124,6 @@ export async function onRequestGet() {
           <span class="seg-btns">
             <button type="button" data-group="color" data-value="community">Community</button>
             <button type="button" data-group="color" data-value="rainbow">Rainbow</button>
-          </span>
-        </span>
-        <span class="seg" role="group" aria-label="Motion">
-          <span class="seg-label">Motion</span>
-          <span class="seg-btns">
-            <button type="button" data-group="motion" data-value="animated">Animated</button>
-            <button type="button" data-group="motion" data-value="instant">Instant</button>
           </span>
         </span>
         <span class="seg" role="group" aria-label="Click action">
@@ -243,9 +232,6 @@ export async function onRequestGet() {
       var EDGE_DIM = "rgba(106, 58, 23, 0.06)";
       var EDGE_HI = "#1b6f8c";   // hovered edge: solid teal, stands out from the sepia
 
-      var reduceMotion = window.matchMedia &&
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
       var state = readState();
       // Apply persisted slider values from the hash before first load.
       nSlider.value = state.n;
@@ -262,8 +248,6 @@ export async function onRequestGet() {
       var neighborSet = new Set();
       var hoveredEdge = null;  // edge key currently under the cursor
       var selectedEdge = null; // edge key pinned by a click (focus mode)
-      var animHandle = 0;
-
       function esc(s) {
         return String(s == null ? "" : s)
           .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
@@ -323,7 +307,6 @@ export async function onRequestGet() {
           min: p.get("min") || "2",
           view: p.get("view") || "graph",
           color: p.get("color") || "community",
-          motion: p.get("motion") || (reduceMotion ? "instant" : "animated"),
           click: p.get("click") || "highlight"
         };
       }
@@ -333,7 +316,6 @@ export async function onRequestGet() {
         p.set("min", minSlider.value);
         p.set("view", state.view);
         p.set("color", state.color);
-        p.set("motion", state.motion);
         p.set("click", state.click);
         history.replaceState(null, "", "#" + p.toString());
       }
@@ -360,7 +342,6 @@ export async function onRequestGet() {
       function applyOption(group) {
         if (group === "view") applyView();
         else if (group === "color") { recolor(); updateLegend(); }
-        else if (group === "motion") { if (state.view === "graph") runLayout(state.motion === "animated"); }
         // "click" needs no immediate work — the handlers read state at click time.
       }
 
@@ -471,12 +452,8 @@ export async function onRequestGet() {
       document.getElementById("card-close").addEventListener("click", clearSelection);
 
       // ---- Layout ----
-      function cancelAnim() {
-        if (animHandle) { cancelAnimationFrame(animHandle); animHandle = 0; }
-      }
-      function runLayout(animated) {
+      function runLayout() {
         if (!graph) return;
-        cancelAnim();
         var iters = Math.min(600, 100 + graph.order * 2);
         var settings = forceAtlas2.inferSettings(graph);
         // Make edge weight (people shared between two orgs) drive attraction,
@@ -492,22 +469,12 @@ export async function onRequestGet() {
         // Respect node radius during repulsion so small orgs settle into rings
         // *around* the big hub they're most tied to, instead of overlapping it.
         settings.adjustSizes = true;
-        if (!animated) {
-          forceAtlas2.assign(graph, { iterations: iters, settings: settings });
-          if (renderer) renderer.refresh();
-          return;
-        }
-        // Animated: iterate in small batches across frames so the user can
-        // watch the network settle. Cheap and worker-free.
-        var done = 0;
-        function step() {
-          forceAtlas2.assign(graph, { iterations: 4, settings: settings });
-          if (renderer) renderer.refresh();
-          done += 4;
-          if (done < iters) animHandle = requestAnimationFrame(step);
-          else animHandle = 0;
-        }
-        step();
+        // Assign the whole run in one pass: ForceAtlas2's adaptive cooling only
+        // works within a single assign() call (it doesn't persist speed state
+        // between calls), so batching across frames produced a worse, more
+        // spread-out layout than this.
+        forceAtlas2.assign(graph, { iterations: iters, settings: settings });
+        if (renderer) renderer.refresh();
       }
 
       // ---- Accessible list view ----
@@ -573,7 +540,6 @@ export async function onRequestGet() {
 
       // ---- Main load ----
       async function load() {
-        cancelAnim();
         clearSelection();
         spinner.style.display = "";
         status.textContent = "Loading…";
@@ -746,7 +712,7 @@ export async function onRequestGet() {
         buildDatalist();
         updateLegend();
         applyView();
-        runLayout(state.motion === "animated" && state.view === "graph");
+        if (state.view === "graph") runLayout();
         setStatus();
       }
 

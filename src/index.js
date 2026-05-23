@@ -13,6 +13,10 @@ import * as places from "./routes/places.js";
 import * as place from "./routes/place.js";
 import * as organizations from "./routes/organizations.js";
 import * as organization from "./routes/organization.js";
+import * as map from "./routes/map.js";
+import * as placesJson from "./routes/places_json.js";
+import * as connections from "./routes/connections.js";
+import * as connectionsJson from "./routes/connections_json.js";
 
 export default {
   async fetch(request, env, ctx) {
@@ -24,6 +28,10 @@ export default {
       if (p === "/people")         return people.onRequestGet({ request, env, ctx });
       if (p === "/places")         return places.onRequestGet({ request, env, ctx });
       if (p === "/organizations")  return organizations.onRequestGet({ request, env, ctx });
+      if (p === "/map")            return map.onRequestGet({ request, env, ctx });
+      if (p === "/places.json")    return placesJson.onRequestGet({ request, env, ctx });
+      if (p === "/connections")    return connections.onRequestGet({ request, env, ctx });
+      if (p === "/connections.json") return connectionsJson.onRequestGet({ request, env, ctx });
 
       let m;
       if ((m = p.match(/^\/people\/([^\/]+)\/?$/)))

@@ -47,6 +47,8 @@ function renderDocument({ title, body }) {
     <a href="/people">People</a>
     <a href="/places">Places</a>
     <a href="/organizations">Organizations</a>
+    <a href="/map">Map</a>
+    <a href="/connections">Network</a>
   </nav>
 </header>
 <main>
